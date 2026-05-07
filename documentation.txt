@@ -1,0 +1,204 @@
+Dokumentacja formatu pliku __script.TCE (Wersja 2.0 - Zweryfikowana z kodem)
+================================================================================
+
+Plik `__script.TCE` to plik konfiguracyjny, który steruje procesem instalacji pakietu .TCEPACKAGE w środowisku Titan. Jego zawartość jest odczytywana przez `TCE_manager.py`.
+
+---
+Struktura ogólna
+---
+- Format pliku to prosta lista par `klucz="wartość"`. Każda para musi znajdować się w nowej linii.
+- Linie zaczynające się od `#` są ignorowane jako komentarze.
+- Nazwy kluczy nie są wrażliwe na wielkość liter (są konwertowane na małe litery).
+- Wartości MUSZĄ być ujęte w podwójny cudzysłów.
+
+Przykład:
+```tce
+# Metadane dla mojej aplikacji
+name="Moja Aplikacja"
+version="1.0.1"
+```
+
+---
+Proces instalacji
+---
+1.  Menedżer odczytuje metadane z pliku `__script.TCE` wewnątrz archiwum.
+2.  **Cała zawartość archiwum `.TCEPACKAGE` jest wypakowywana do głównego katalogu danych Titan** (np. `C:\titan_data`). Nie ma możliwości kopiowania plików do różnych lokalizacji za pomocą komend w skrypcie.
+3.  Po rozpakowaniu, menedżer wykonuje zadania zdefiniowane w kluczu `install_tasks`.
+
+---
+Obsługiwane klucze (Metadane)
+---
+
+### Klucze informacyjne
+Te klucze są wyświetlane użytkownikowi w oknie dialogowym przed instalacją.
+
+- `name`: Nazwa aplikacji/pakietu.
+- `version`: Wersja.
+- `author`: Autor.
+- `description`: Krótki opis.
+- `destination`: Informacja o przeznaczeniu (wyświetlana, ale bez wpływu na logikę).
+
+### Klucze funkcyjne
+Te klucze sterują logiką instalatora.
+
+- `reqadmin="1"`
+  Jeśli ten klucz ma wartość "1", menedżer sprawdzi, czy posiada uprawnienia administratora. Jeśli nie, wyświetli użytkownikowi ostrzeżenie. Jest to ważne, jeśli zadania w `install_tasks` wymagają podniesionych uprawnień.
+
+- `install_tasks`
+  To najważniejszy klucz funkcyjny. Pozwala na uruchomienie jednego lub więcej zadań **po** rozpakowaniu plików.
+
+  Obsługiwane są trzy typy zadań:
+
+  **1. cmd("polecenie")** - Wykonuje polecenie systemowe
+  - Format: `cmd("twoje_polecenie_tutaj")`
+  - Polecenie jest uruchamiane w powłoce systemowej (shell=True)
+  - Output jest wyświetlany w czasie rzeczywistym w oknie postępu
+
+  **2. winget("package_id")** - Instaluje pakiet przez Windows Package Manager
+  - Format: `winget("package_id")`
+  - Automatycznie dodaje flagi: `--accept-package-agreements --accept-source-agreements`
+  - Przykład: `winget("Microsoft.VisualStudioCode")`
+  - Output instalacji jest wyświetlany w czasie rzeczywistym
+
+  **3. dlg("tytuł", "wiadomość")** - Wyświetla okno dialogowe
+  - Format: `dlg("tytuł", "treść wiadomości")`
+  - Służy do pokazywania komunikatów użytkownikowi podczas instalacji
+  - Przykład: `dlg("Ważne", "Proszę uruchomić ponownie komputer po instalacji")`
+
+  **Przykłady użycia `install_tasks`:**
+
+  Prosty przykład z cmd():
+  ```tce
+  install_tasks="cmd(\"C:\\titan_data\\MojaAplikacja\\konfiguracja.bat\")
+  cmd(\"echo Instalacja zakończona > C:\\titan_data\\log.txt\")"
+  ```
+
+  Przykład z winget():
+  ```tce
+  install_tasks="winget(\"Python.Python.3.12\")
+  winget(\"Git.Git\")"
+  ```
+
+  Przykład mieszany:
+  ```tce
+  install_tasks="dlg(\"Witaj\", \"Zaczynam instalację dodatkowych komponentów...\")
+  winget(\"Microsoft.DotNet.Runtime.8\")
+  cmd(\"C:\\titan_data\\MojaAplikacja\\setup.bat\")
+  dlg(\"Zakończono\", \"Proszę uruchomić ponownie aplikację.\")"
+  ```
+
+  **UWAGI:**
+  - Wszystkie zadania są wykonywane sekwencyjnie, jedno po drugim
+  - Użytkownik może anulować instalację w dowolnym momencie
+  - Jeśli zadanie cmd() lub winget() zakończy się błędem (kod != 0), wyświetlane jest ostrzeżenie, ale instalacja kontynuowana
+  - Okno postępu pokazuje aktualne zadanie i jego output w czasie rzeczywistym
+  - Za pomocą cmd() można realizować zaawansowane operacje, takie jak tworzenie skrótów czy modyfikacja rejestru
+
+---
+Interfejs użytkownika podczas instalacji
+---
+
+### Okno dialogowe potwierdzenia (PackageConfirmDialog)
+Przed instalacją użytkownik widzi okno dialogowe z:
+- Wszystkimi metadanymi pakietu (nazwa, wersja, autor, opis, zadania instalacyjne, etc.)
+- Dwoma opcjami akcji:
+  - "-> Instaluj ten pakiet" (Enter/podwójne kliknięcie)
+  - "-> Anuluj instalację" (Escape)
+
+### Okno postępu instalacji (ProgressDialog)
+Po potwierdzeniu instalacji wyświetlane jest okno postępu z:
+- Paskiem postępu pokazującym etap instalacji (0-100%)
+- Aktualnym opisem operacji (np. "Rozpakowywanie plików...", "Zadanie: Winget: Python.Python.3.12")
+- Output w czasie rzeczywistym z uruchomionych poleceń cmd() i winget()
+- Przyciskiem "Anuluj" umożliwiającym przerwanie instalacji w dowolnym momencie
+
+**Etapy instalacji:**
+1. 0-10%: Przygotowywanie
+2. 10-70%: Rozpakowywanie plików (extract)
+3. 70-80%: Finalizowanie
+4. 80-95%: Wykonywanie zadań z install_tasks (równo rozdzielone)
+5. 95-100%: Zakończenie
+
+### Obsługa błędów
+- **Brak metadanych**: Instalacja zostaje przerwana, wyświetlany komunikat o błędzie
+- **Błąd rozpakowywania**: Instalacja zostaje przerwana, wyświetlany komunikat o błędzie z kodem wyjścia 7-Zip
+- **Błąd zadania install_tasks**: Wyświetlane jest ostrzeżenie, ale instalacja kontynuowana
+- **Anulowanie przez użytkownika**: Instalacja przerwana natychmiast, żadne dalsze zadania nie są wykonywane
+
+---
+Dobre praktyki tworzenia pakietów TCE
+---
+
+### Struktura pakietu
+```
+MojPakiet.TCEPACKAGE (archiwum 7-Zip)
+├── __script.TCE              # Plik konfiguracyjny (WYMAGANY)
+├── MojaAplikacja/             # Katalog aplikacji
+│   ├── program.exe
+│   ├── biblioteki/
+│   └── konfiguracja.bat      # Opcjonalny skrypt instalacyjny
+└── inne_pliki/
+```
+
+**WAŻNE:**
+- Wszystkie pliki z archiwum są wypakowywane bezpośrednio do `titan_data` (np. `C:\titan_data`)
+- Plik `__script.TCE` NIE jest kopiowany do `titan_data`, służy tylko do konfiguracji instalacji
+- Zalecane jest pakowanie aplikacji w podfoldery (np. `MojaAplikacja/`) aby uniknąć konfliktu nazw plików
+
+### Przykład kompletnego __script.TCE
+
+```tce
+# Metadane pakietu
+name="Python Development Environment"
+version="3.12.1"
+author="TitoSoft"
+description="Kompletne środowisko Python z VS Code i rozszerzeniami"
+destination="titan_data"
+
+# Wymagane uprawnienia administratora
+reqadmin="1"
+
+# Zadania instalacyjne
+install_tasks="dlg(\"Rozpoczęcie instalacji\", \"Instaluję Python 3.12 i Visual Studio Code. Może to potrwać kilka minut.\")
+winget(\"Python.Python.3.12\")
+winget(\"Microsoft.VisualStudioCode\")
+cmd(\"C:\\titan_data\\PythonEnv\\install_extensions.bat\")
+dlg(\"Zakończono\", \"Instalacja zakończona! Uruchom VS Code z menu Start.\")"
+```
+
+### Wskazówki dotyczące install_tasks
+
+1. **Używaj dlg() do komunikacji z użytkownikiem**
+   - Na początku, aby wyjaśnić co będzie instalowane
+   - Na końcu, aby poinformować o kolejnych krokach
+
+2. **Preferuj winget() nad cmd() dla instalacji oprogramowania**
+   - winget() jest bezpieczniejszy i bardziej niezawodny
+   - Automatycznie obsługuje zgody licencyjne
+
+3. **Umieszczaj skrypty pomocnicze w archiwum**
+   - Jeśli potrzebujesz skomplikowanej logiki, utwórz plik .bat
+   - Rozpakuj go z archiwum i uruchom przez cmd()
+
+4. **Testuj na czystym systemie**
+   - Upewnij się, że wszystkie zależności są zainstalowane przez pakiet
+   - Sprawdź czy reqadmin="1" jest rzeczywiście potrzebne
+
+5. **Dokumentuj wymagania**
+   - W description wyjaśnij co pakiet instaluje
+   - Jeśli wymaga restartu systemu, użyj dlg() na końcu
+
+---
+Historia zmian formatu
+---
+
+**Wersja 2.0** (Aktualna)
+- Dodano obsługę winget() w install_tasks
+- Dodano obsługę dlg() w install_tasks
+- Progress dialog z możliwością anulowania instalacji
+- Real-time output z poleceń cmd() i winget()
+
+**Wersja 1.0** (Oryginalna)
+- Podstawowe metadane (name, version, author, description, destination)
+- Obsługa reqadmin
+- Obsługa install_tasks z cmd() tylko

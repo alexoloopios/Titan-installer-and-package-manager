@@ -1,0 +1,7 @@
+to jest pierwsza, publiczna wersja środowiska TCE
+W tej wersji mogą się zdarzyć błędy, które nie zostały wykryte przez dewelopera lub/i testerów
+Aby poprawnie zainstalować środowisko TCE, może być niezbędne uruchamianie instalatora jako administrator
+Windows defender może uznać Titana za zagrożenie, dla tego c:\titan może lub musi być dodane do folderu jako wykluczenie. 
+for English speakers
+TCE supports English language after installation. 
+Some strings in the environment were auto translated
