@@ -51,7 +51,7 @@ def main():
         "MAIN_APP_EXE_PATH_FOR_SHORTCUT": os.path.join(SCRIPT_DIR, "titan_data", "titan.exe"),  # Środowisko Titan dla skrótu
         "BIN_DIR": os.path.join(SCRIPT_DIR, "bin"), # Katalog z wget.exe, 7z.exe
         "SFX_DIR": os.path.join(SCRIPT_DIR, "sfx"),
-        "README_FILE": os.path.join(SCRIPT_DIR, "czytajto.txt"),
+        "README_FILE": os.path.join(SCRIPT_DIR, "readme.txt"),
         # Stałe nazwy plików i argumentów
         "PERSISTENT_PACKAGE_HANDLER_EXE_NAME": PERSISTENT_PACKAGE_HANDLER_EXE_NAME,
         "COMMAND_LINE_ARG_TCE_PACKAGE": COMMAND_LINE_ARG_TCE_PACKAGE,
