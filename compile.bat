@@ -1,5 +1,5 @@
 @echo off
-echo Kompilacja Titan Installer z Nuitka...
+echo Titan Installer build with Nuitka...
 echo.
 
 python -m nuitka main.py ^
@@ -19,11 +19,11 @@ python -m nuitka main.py ^
   --output-filename=TitanInstaller.exe ^
   --include-data-dir=bin=bin ^
   --include-data-dir=sfx=sfx ^
-  --include-data-file=czytajto.txt=czytajto.txt ^
+  --include-data-file=readme.txt=readme.txt ^
   --include-data-file=.env=.env ^
   --enable-plugin=anti-bloat ^
   --assume-yes-for-downloads
 
 echo.
-echo Kompilacja zakonczona!
+echo Compilation complete!
 pause
